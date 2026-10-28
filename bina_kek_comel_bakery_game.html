@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kedai Kek Comel - Permainan Membakar Kek</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Fredoka & Quicksand) -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bakery: {
+                            pink: '#FFB7B2',
+                            cream: '#FFF5EB',
+                            yellow: '#FFE5B4',
+                            brown: '#8D5B4C',
+                            mint: '#E2F0D9',
+                            purple: '#E1CEF2',
+                            dark: '#5D4037'
+                        }
+                    },
+                    fontFamily: {
+                        fredoka: ['Fredoka', 'sans-serif'],
+                        quicksand: ['Quicksand', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #FFF5EB;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        h1, h2, h3, button, .font-heading {
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FFE5B4;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #FFB7B2;
+            border-radius: 10px;
+        }
+
+        /* Animations */
+        @keyframes pulse-gentle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .animate-pulse-gentle {
+            animation: pulse-gentle 2s infinite ease-in-out;
+        }
+
+        @keyframes bounce-subtle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-bounce-subtle {
+            animation: bounce-subtle 1.5s infinite ease-in-out;
+        }
+
+        @keyframes steam {
+            0% { transform: translateY(0) scaleX(1); opacity: 0; }
+            50% { opacity: 0.6; }
+            100% { transform: translateY(-30px) scaleX(1.5); opacity: 0; }
+        }
+        .steam-particle {
+            animation: steam 2s infinite ease-out;
+        }
+
+        /* Mixing Bowl Drag Target Styling */
+        .drag-over {
+            transform: scale(1.08);
+            border-color: #FFB7B2 !important;
+            box-shadow: 0 0 20px rgba(255, 183, 178, 0.6);
+        }
+
+        /* Cake Decoration Canvas Container */
+        .cake-layer {
+            transition: all 0.5s ease;
+        }
+
+        /* Custom Tooltips */
+        .tooltip {
+            visibility: hidden;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #5D4037;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .has-tooltip:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-bakery-dark flex flex-col justify-between overflow-x-hidden bg-[radial-gradient(#FFE5B4_1px,transparent_1px)] [background-size:16px_16px]">
+
+    <!-- Audio Control & Top Navigation -->
+    <header class="bg-white/80 backdrop-blur-md border-b-4 border-bakery-pink sticky top-0 z-40 px-4 py-3 shadow-md">
+        <div class="max-w-5xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="goHome()">
+                <div class="bg-bakery-pink text-white p-2.5 rounded-2xl shadow-inner text-2xl">
+                    <i class="fa-solid font-bold fa-cake-candles"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold text-bakery-brown leading-none">Kedai Kek Comel</h1>
+                    <p class="text-xs text-pink-500 font-bold">Bake & Decorate Master</p>
+                </div>
+            </div>
+
+            <!-- Stats Bar & Controls -->
+            <div class="flex items-center gap-3">
+                <!-- Coins -->
+                <div class="bg-amber-100 border-2 border-amber-300 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-coins text-amber-500 text-lg"></i>
+                    <span id="coinCount" class="font-bold text-amber-900 text-sm md:text-base">100</span>
+                </div>
+
+                <!-- Sound Toggle -->
+                <button id="soundBtn" onclick="toggleSound()" class="w-10 h-10 bg-bakery-cream hover:bg-amber-200 border-2 border-amber-300 rounded-full flex items-center justify-center transition text-bakery-brown shadow-sm">
+                    <i id="soundIcon" class="fa-solid fa-volume-high text-lg"></i>
+                </button>
+
+                <!-- Gallery Button -->
+                <button onclick="openGallery()" class="bg-pink-100 hover:bg-pink-200 text-pink-700 border-2 border-pink-300 px-3 py-1.5 rounded-full flex items-center gap-2 transition text-sm font-bold shadow-sm">
+                    <i class="fa-solid fa-images"></i>
+                    <span class="hidden sm:inline">Galeri</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="max-w-5xl w-full mx-auto p-4 flex-grow flex flex-col justify-center">
+
+        <!-- SCREEN 1: MAIN MENU / MODE SELECTION -->
+        <section id="menuScreen" class="bg-white/90 backdrop-blur rounded-3xl p-6 md:p-10 shadow-xl border-4 border-bakery-pink text-center max-w-2xl mx-auto my-auto w-full transition-all">
+            <div class="inline-block bg-pink-100 text-pink-600 px-4 py-1.5 rounded-full text-sm font-bold mb-4">
+                ✨ Selamat Datang Ke Kedai Kek! ✨
+            </div>
+            <h2 class="text-3xl md:text-4xl font-bold text-bakery-brown mb-3">Pilih Mod Permainan</h2>
+            <p class="text-gray-600 mb-8 max-w-md mx-auto text-sm md:text-base">Sediakan apron anda! Pilih untuk melayani pelanggan yang lapar atau reka kek sesuka hati anda.</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
+                <!-- Shop Mode -->
+                <button onclick="startGame('shop')" class="group bg-gradient-to-br from-amber-100 to-amber-200 hover:from-amber-200 hover:to-amber-300 border-4 border-amber-400 p-6 rounded-2xl shadow-lg transition transform hover:-translate-y-1 text-left flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute -right-4 -bottom-4 text-amber-300/40 text-8xl group-hover:scale-110 transition">
+                        <i class="fa-solid fa-store"></i>
+                    </div>
+                    <div class="relative z-10">
+                        <div class="bg-amber-500 text-white w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-3 shadow-md">
+                            <i class="fa-solid fa-shop"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-amber-900 mb-1">Mod Pelanggan</h3>
+                        <p class="text-xs text-amber-800">Ikut pesanan pelanggan, dapatkan syiling & buka bahan baru!</p>
+                    </div>
+                    <div class="mt-4 inline-flex items-center text-xs font-bold text-amber-900 group-hover:translate-x-1 transition">
+                        Mula Niaga <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </div>
+                </button>
+
+                <!-- Free Play Mode -->
+                <button onclick="startGame('free')" class="group bg-gradient-to-br from-pink-100 to-purple-100 hover:from-pink-200 hover:to-purple-200 border-4 border-pink-300 p-6 rounded-2xl shadow-lg transition transform hover:-translate-y-1 text-left flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute -right-4 -bottom-4 text-pink-300/40 text-8xl group-hover:scale-110 transition">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <div class="relative z-10">
+                        <div class="bg-pink-500 text-white w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-3 shadow-md">
+                            <i class="fa-solid fa-palette"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-pink-900 mb-1">Mod Bebas (Kreatif)</h3>
+                        <p class="text-xs text-pink-800">Cipta & hias kek impian anda tanpa had masa atau syarat!</p>
+                    </div>
+                    <div class="mt-4 inline-flex items-center text-xs font-bold text-pink-900 group-hover:translate-x-1 transition">
+                        Bebas Cipta <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </div>
+                </button>
+            </div>
+        </section>
+
+        <!-- SCREEN 2: GAME WORKSHOP (Interactive Baking Workflow) -->
+        <section id="gameScreen" class="hidden flex-col gap-4">
+            
+            <!-- Customer Order Banner (Visible only in Shop Mode) -->
+            <div id="customerOrderBar" class="bg-white/90 border-4 border-amber-300 rounded-2xl p-4 shadow-md flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <div id="customerAvatar" class="w-14 h-14 bg-amber-100 rounded-full border-2 border-amber-400 flex items-center justify-center text-2xl shadow-inner">
+                            🐱
+                        </div>
+                        <div class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">Pelanggan</div>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h4 id="customerName" class="font-bold text-amber-900 text-sm md:text-base">Pelanggan Comel</h4>
+                            <span id="orderDialogue" class="text-xs text-gray-500 italic">"Saya nak kek ini!"</span>
+                        </div>
+                        <div id="orderSpecs" class="flex flex-wrap gap-1.5 mt-1">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timer Bar -->
+                <div class="w-full sm:w-48 bg-gray-200 h-3 rounded-full overflow-hidden border border-gray-300 relative">
+                    <div id="customerTimer" class="bg-emerald-500 h-full w-full transition-all duration-1000 ease-linear"></div>
+                </div>
+            </div>
+
+            <!-- BAKING WORKFLOW STEPS CONTAINER -->
+            <div class="bg-white/90 backdrop-blur rounded-3xl p-4 md:p-6 shadow-xl border-4 border-bakery-pink relative">
+                
+                <!-- Progress Stepper Header -->
+                <div class="flex justify-between items-center mb-6 max-w-2xl mx-auto px-2">
+                    <div class="step-indicator active flex flex-col items-center gap-1" id="stepInd1">
+                        <div class="w-9 h-9 rounded-full bg-bakery-pink text-white font-bold flex items-center justify-center shadow-md text-sm border-2 border-white">1</div>
+                        <span class="text-[11px] font-bold text-bakery-brown">Pilih Kek</span>
+                    </div>
+                    <div class="h-1 flex-grow bg-gray-200 mx-1 rounded" id="stepLine1"></div>
+                    
+                    <div class="step-indicator flex flex-col items-center gap-1 opacity-50" id="stepInd2">
+                        <div class="w-9 h-9 rounded-full bg-gray-300 text-gray-600 font-bold flex items-center justify-center shadow-md text-sm border-2 border-white">2</div>
+                        <span class="text-[11px] font-bold text-gray-500">Adunan</span>
+                    </div>
+                    <div class="h-1 flex-grow bg-gray-200 mx-1 rounded" id="stepLine2"></div>
+
+                    <div class="step-indicator flex flex-col items-center gap-1 opacity-50" id="stepInd3">
+                        <div class="w-9 h-9 rounded-full bg-gray-300 text-gray-600 font-bold flex items-center justify-center shadow-md text-sm border-2 border-white">3</div>
+                        <span class="text-[11px] font-bold text-gray-500">Bakar</span>
+                    </div>
+                    <div class="h-1 flex-grow bg-gray-200 mx-1 rounded" id="stepLine3"></div>
+
+                    <div class="step-indicator flex flex-col items-center gap-1 opacity-50" id="stepInd4">
+                        <div class="w-9 h-9 rounded-full bg-gray-300 text-gray-600 font-bold flex items-center justify-center shadow-md text-sm border-2 border-white">4</div>
+                        <span class="text-[11px] font-bold text-gray-500">Hias</span>
+                    </div>
+                </div>
+
+                <!-- STEP 1: CHOOSE CAKE TYPE -->
+                <div id="step1Content" class="step-content">
+                    <div class="text-center mb-6">
+                        <h3 class="text-2xl font-bold text-bakery-brown">Langkah 1: Pilih Perisa Base Kek</h3>
+                        <p class="text-xs md:text-sm text-gray-600">Klik pada resepi kek yang ingin anda bina hari ini!</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+                        <!-- Cake Selection Cards (Populated via JavaScript) -->
+                        <div id="cakeOptionsGrid" class="contents"></div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: MIX INGREDIENTS -->
+                <div id="step2Content" class="step-content hidden">
+                    <div class="text-center mb-4">
+                        <h3 class="text-2xl font-bold text-bakery-brown">Langkah 2: Campur & Kacau Adunan</h3>
+                        <p class="text-xs md:text-sm text-gray-600">Seret atau tekan bahan-bahan ke dalam mangkuk, kemudian kacau!</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                        <!-- Left: Ingredient Shelf -->
+                        <div class="bg-amber-50 p-4 rounded-2xl border-2 border-amber-200">
+                            <h4 class="font-bold text-sm text-amber-900 mb-3 text-center border-b pb-1">Bahan-Bahan Diperlukan</h4>
+                            <div id="ingredientsContainer" class="grid grid-cols-2 gap-2">
+                                <!-- Ingredients appended by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Center: Mixing Bowl & Batter Preview -->
+                        <div class="flex flex-col items-center justify-center min-h-[220px]">
+                            <div id="mixingBowl" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="dropIngredient(event)" 
+                                 class="w-48 h-48 rounded-b-full border-8 border-slate-300 bg-gradient-to-b from-transparent via-slate-100 to-slate-200 relative flex items-center justify-center shadow-inner transition-all cursor-pointer">
+                                
+                                <!-- Batter Inside Bowl -->
+                                <div id="bowlBatter" class="absolute bottom-2 w-40 h-0 rounded-b-full transition-all duration-500 flex items-center justify-center overflow-hidden">
+                                    <div id="batterBubbles" class="w-full h-full relative opacity-70"></div>
+                                </div>
+
+                                <!-- Whisk Tool -->
+                                <div id="whiskTool" class="absolute -top-6 text-5xl text-slate-400 transform -rotate-12 transition hover:scale-110 cursor-grab active:cursor-grabbing z-10 hidden">
+                                    🧹
+                                </div>
+
+                                <div id="bowlInstruction" class="text-xs font-bold text-gray-400 text-center px-4 z-10 pointer-events-none">
+                                    Seret atau Tekan Bahan Ke Sini
+                                </div>
+                            </div>
+
+                            <!-- Mix Progress Bar -->
+                            <div class="w-full max-w-xs mt-4">
+                                <div class="flex justify-between text-xs font-bold text-gray-600 mb-1">
+                                    <span>Sebatian Adunan</span>
+                                    <span id="mixPercent">0%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 h-4 rounded-full overflow-hidden border border-gray-300">
+                                    <div id="mixProgressBar" class="bg-pink-400 h-full w-0 transition-all duration-200"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Mixing Instruction & Action Button -->
+                        <div class="bg-pink-50 p-4 rounded-2xl border-2 border-pink-200 text-center flex flex-col justify-between h-full">
+                            <div>
+                                <i class="fa-solid fa-blender text-3xl text-pink-400 mb-2"></i>
+                                <h4 class="font-bold text-sm text-pink-900 mb-1">Cara Mengacau</h4>
+                                <p class="text-xs text-pink-700 mb-3">Tekan butang "Kacau" berulang kali atau klik mangkuk untuk meratakan adunan kek!</p>
+                            </div>
+                            <button id="whiskBtn" onclick="whiskStep()" disabled class="w-full bg-pink-400 hover:bg-pink-500 text-white font-bold py-3 px-4 rounded-xl shadow border-b-4 border-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fa-solid fa-rotate-right mr-1"></i> Kacau Adunan!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: OVEN BAKING -->
+                <div id="step3Content" class="step-content hidden">
+                    <div class="text-center mb-4">
+                        <h3 class="text-2xl font-bold text-bakery-brown">Langkah 3: Bakar Dalam Ketuhar</h3>
+                        <p class="text-xs md:text-sm text-gray-600">Tetapkan suhu & masa. Angkat kek apabila masak keemasan, jangan sampai hangus!</p>
+                    </div>
+
+                    <div class="max-w-md mx-auto bg-slate-800 p-6 rounded-3xl border-8 border-slate-700 shadow-2xl text-white relative">
+                        <!-- Steam & Smoke Effect Canvas Container -->
+                        <div id="ovenSteam" class="absolute -top-10 left-1/2 transform -translate-x-1/2 flex gap-2 pointer-events-none opacity-0 transition-opacity">
+                            <span class="text-2xl steam-particle">💨</span>
+                            <span class="text-3xl steam-particle" style="animation-delay: 0.5s">🌫️</span>
+                            <span class="text-2xl steam-particle" style="animation-delay: 1s">💨</span>
+                        </div>
+
+                        <!-- Oven Glass Window -->
+                        <div id="ovenWindow" class="w-full h-48 bg-amber-950/80 rounded-2xl border-4 border-slate-600 relative overflow-hidden flex items-center justify-center transition-colors">
+                            <!-- Inside Heating Glow -->
+                            <div id="ovenGlow" class="absolute inset-0 bg-amber-500/10 transition-opacity opacity-0"></div>
+                            
+                            <!-- Baking Tray & Cake Base -->
+                            <div class="relative z-10 flex flex-col items-center">
+                                <div id="bakingCake" class="w-32 h-16 bg-amber-200 rounded-t-xl border-2 border-amber-400 transform scale-75 transition-all duration-1000 shadow-md flex items-center justify-center">
+                                    <span id="cakeStatusEmoji" class="text-xl">✨</span>
+                                </div>
+                                <div class="w-44 h-4 bg-slate-400 rounded-lg border-b-2 border-slate-600 shadow"></div>
+                            </div>
+                        </div>
+
+                        <!-- Oven Controls -->
+                        <div class="mt-6 flex items-center justify-between gap-4 bg-slate-900 p-3 rounded-xl border border-slate-700">
+                            <!-- Timer & Status Display -->
+                            <div class="flex-grow">
+                                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status Pembakaran</div>
+                                <div id="ovenTimerDisplay" class="text-xl font-bold text-amber-400 font-mono">00:00 - Sedia</div>
+                            </div>
+
+                            <!-- Start / Take Out Button -->
+                            <button id="ovenStartBtn" onclick="toggleOven()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2.5 px-5 rounded-xl border-b-4 border-amber-700 transition shadow">
+                                <i class="fa-solid fa-fire mr-1"></i> Mula Bakar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 4: FROSTING & DECORATION -->
+                <div id="step4Content" class="step-content hidden">
+                    <div class="text-center mb-4">
+                        <h3 class="text-2xl font-bold text-bakery-brown">Langkah 4: Hias & Reka Kek</h3>
+                        <p class="text-xs md:text-sm text-gray-600">Pilih krim, tabur hiasan, buah-buahan, lilin atau tulis mesej istimewa!</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        <!-- Left Toolbox: Frosting & Decoration Tabs -->
+                        <div class="lg:col-span-5 bg-pink-50/80 p-4 rounded-2xl border-2 border-pink-200">
+                            <!-- Tabs -->
+                            <div class="flex border-b border-pink-200 mb-3 gap-1">
+                                <button onclick="switchDecoTab('frosting')" id="tabFrosting" class="deco-tab active font-bold text-xs py-2 px-3 rounded-t-lg bg-pink-400 text-white">Krim (Icing)</button>
+                                <button onclick="switchDecoTab('toppings')" id="tabToppings" class="deco-tab font-bold text-xs py-2 px-3 rounded-t-lg bg-pink-100 text-pink-800">Hiasan/Buah</button>
+                                <button onclick="switchDecoTab('piping')" id="tabPiping" class="deco-tab font-bold text-xs py-2 px-3 rounded-t-lg bg-pink-100 text-pink-800">Tulisan Tangan</button>
+                            </div>
+
+                            <!-- Tab 1: Frosting Options -->
+                            <div id="decoFrostingSection" class="tab-content">
+                                <label class="text-xs font-bold text-pink-900 mb-2 block">Pilih Warna / Rasa Krim:</label>
+                                <div class="grid grid-cols-3 gap-2" id="frostingOptions">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Tab 2: Toppings Options -->
+                            <div id="decoToppingsSection" class="tab-content hidden">
+                                <label class="text-xs font-bold text-pink-900 mb-2 block">Pilih Hiasan Atas Kek (Tekan untuk letak):</label>
+                                <div class="grid grid-cols-4 gap-2" id="toppingsOptions">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Tab 3: Custom Text Piping -->
+                            <div id="decoPipingSection" class="tab-content hidden">
+                                <label class="text-xs font-bold text-pink-900 mb-2 block">Mesej Pada Kek:</label>
+                                <input type="text" id="pipingTextInput" placeholder="Cth: Selamat Hari Lahir!" maxlength="25" class="w-full px-3 py-2 text-sm rounded-xl border-2 border-pink-300 mb-2 focus:outline-none focus:border-pink-500">
+                                <div class="flex gap-2">
+                                    <input type="color" id="pipingColorInput" value="#5D4037" class="w-10 h-9 rounded cursor-pointer border-2 border-pink-300">
+                                    <button onclick="applyPipingText()" class="flex-grow bg-pink-500 hover:bg-pink-600 text-white font-bold text-xs py-2 rounded-xl transition">
+                                        Tulis Atas Kek
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Container: Interactive Canvas Base & Plate -->
+                        <div class="lg:col-span-7 flex flex-col items-center">
+                            <!-- Cake Display Container -->
+                            <div id="cakeStage" class="w-full h-72 bg-gradient-to-b from-amber-50 to-orange-50 rounded-2xl border-4 border-amber-200 relative flex items-center justify-center overflow-hidden shadow-inner cursor-pointer" onclick="handleStageClick(event)">
+                                
+                                <!-- Decorative Plate -->
+                                <div class="w-64 h-8 bg-slate-200 rounded-full border-b-4 border-slate-300 absolute bottom-12 shadow-lg flex items-center justify-center">
+                                    <div class="w-56 h-4 bg-white/60 rounded-full"></div>
+                                </div>
+
+                                <!-- Cake Canvas Container -->
+                                <div id="cakeBaseRender" class="relative z-10 bottom-2 transition-transform duration-300 flex flex-col items-center">
+                                    <!-- Frosting Top Layer -->
+                                    <div id="renderFrosting" class="w-48 h-20 bg-amber-100 rounded-t-3xl border-b-4 border-amber-300 relative overflow-visible shadow-md transition-colors">
+                                        <!-- Piping Text Render -->
+                                        <div id="renderPipingText" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-center px-2 pointer-events-none drop-shadow"></div>
+                                        
+                                        <!-- Placed Toppings Holder -->
+                                        <div id="renderToppingsHolder" class="absolute inset-0 pointer-events-none"></div>
+                                    </div>
+                                    <!-- Sponge Bottom Layer -->
+                                    <div id="renderSponge" class="w-48 h-16 bg-amber-200 rounded-b-xl border-t-2 border-amber-300 shadow"></div>
+                                </div>
+                            </div>
+
+                            <!-- Controls for Finish / Reset -->
+                            <div class="flex gap-3 mt-4 w-full">
+                                <button onclick="resetDecorations()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2.5 px-4 rounded-xl text-xs transition">
+                                    <i class="fa-solid fa-rotate-left mr-1"></i> Reset Hiasan
+                                </button>
+                                <button onclick="finishCake()" class="flex-grow bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 px-6 rounded-xl text-sm border-b-4 border-emerald-700 transition shadow">
+                                    <i class="fa-solid fa-check mr-1"></i> Siap & Hidangkan Kek!
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SCREEN 3: RESULT & SHOWCASE MODAL / SCREEN -->
+        <section id="resultScreen" class="hidden bg-white/95 backdrop-blur rounded-3xl p-6 md:p-8 shadow-2xl border-4 border-bakery-pink text-center max-w-xl mx-auto my-auto w-full">
+            <div id="resultBadge" class="inline-block bg-amber-100 text-amber-700 px-4 py-1.5 rounded-full text-xs font-bold mb-3">
+                🎉 Kek Berjaya Dihidangkan!
+            </div>
+            
+            <h2 id="resultTitle" class="text-3xl font-bold text-bakery-brown mb-2">Tahniah! Kek Sempurna!</h2>
+            
+            <!-- Stars Rating -->
+            <div id="starRating" class="flex justify-center gap-2 text-2xl text-amber-400 mb-4">
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+            </div>
+
+            <!-- Cake Preview Card -->
+            <div class="bg-gradient-to-b from-amber-50 to-orange-100 p-6 rounded-2xl border-2 border-amber-200 mb-4 flex justify-center items-center">
+                <div id="resultCakePreview" class="transform scale-90">
+                    <!-- Cloned cake structure goes here -->
+                </div>
+            </div>
+
+            <!-- Score / Feedback Details -->
+            <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-900 mb-6 flex justify-around">
+                <div>
+                    <span class="block text-gray-500">Ganjaran Syiling</span>
+                    <span id="earnedCoins" class="text-base font-bold text-amber-600">+50 🪙</span>
+                </div>
+                <div class="border-r border-amber-200"></div>
+                <div>
+                    <span class="block text-gray-500">Kepuasan</span>
+                    <span id="customerFeedback" class="text-base font-bold text-emerald-600">Sangat Puas Hati!</span>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="saveToGallery()" class="bg-pink-100 hover:bg-pink-200 text-pink-700 font-bold py-3 px-4 rounded-xl text-xs flex-grow transition border-2 border-pink-300">
+                    <i class="fa-solid fa-bookmark mr-1"></i> Simpan Ke Galeri
+                </button>
+                <button onclick="nextCustomerOrFinish()" class="bg-bakery-pink hover:bg-pink-400 text-white font-bold py-3 px-6 rounded-xl text-xs flex-grow transition shadow border-b-4 border-pink-500">
+                    Seterusnya <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- GALLERY MODAL -->
+        <div id="galleryModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-6 border-4 border-bakery-pink max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl">
+                <div class="flex justify-between items-center mb-4 border-b pb-3">
+                    <h3 class="text-2xl font-bold text-bakery-brown flex items-center gap-2">
+                        <i class="fa-solid fa-images text-pink-400"></i> Galeri Kek Saya
+                    </h3>
+                    <button onclick="closeGallery()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+                </div>
+
+                <div id="galleryGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto flex-grow p-2">
+                    <!-- Dynamic Saved Cakes -->
+                </div>
+
+                <div class="mt-4 pt-3 border-t text-right">
+                    <button onclick="closeGallery()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-5 py-2 rounded-xl text-xs">
+                        Tutup Galeri
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-4 text-xs text-amber-800/70">
+        <p>❤️ Kedai Kek Comel — Dibina dengan HTML, CSS & JavaScript</p>
+    </footer>
+
+    <!-- JAVASCRIPT GAME LOGIC -->
+    <script>
+        /* ==========================================
+           1. DATA DEFINITIONS & CONSTANTS (BAHASA MELAYU)
+           ========================================== */
+        
+        const CAKE_TYPES = [
+            { id: 'choc', name: 'Kek Coklat Rich', color: '#5D4037', spongeColor: '#4E342E', icon: '🍫', price: 0 },
+            { id: 'vanilla', name: 'Kek Vanila Klasik', color: '#FFF8E1', spongeColor: '#FFE082', icon: '🍦', price: 0 },
+            { id: 'redvelvet', name: 'Kek Red Velvet', color: '#B71C1C', spongeColor: '#C62828', icon: '🔴', price: 20 },
+            { id: 'matcha', name: 'Kek Matcha Green Tea', color: '#AED581', spongeColor: '#81C784', icon: '🍵', price: 30 },
+            { id: 'strawberry', name: 'Kek Strowberi Segar', color: '#F8BBD0', spongeColor: '#F48FB1', icon: '🍓', price: 25 },
+            { id: 'confetti', name: 'Kek Hari Lahir Confetti', color: '#E1BEE7', spongeColor: '#FFF59D', icon: '🎉', price: 40 }
+        ];
+
+        const INGREDIENTS = [
+            { id: 'flour', name: 'Tepung Kek', icon: '🌾' },
+            { id: 'sugar', name: 'Gula Halus', icon: '🍬' },
+            { id: 'eggs', name: 'Telur Ayam', icon: '🥚' },
+            { id: 'butter', name: 'Mentega', icon: '🧈' },
+            { id: 'milk', name: 'Susu Segar', icon: '🥛' },
+            { id: 'flavor', name: 'Esens Perisa', icon: '🧪' }
+        ];
+
+        const FROSTINGS = [
+            { id: 'pink', name: 'Krim Strowberi', color: '#FFB7B2' },
+            { id: 'white', name: 'Krim Vanila', color: '#FFFFFF' },
+            { id: 'choc', name: 'Krim Coklat', color: '#795548' },
+            { id: 'purple', name: 'Krim Keladi/YAM', color: '#CE93D8' },
+            { id: 'mint', name: 'Krim Pudina', color: '#A5D6A7' },
+            { id: 'blue', name: 'Krim Awan Biru', color: '#90CAF9' }
+        ];
+
+        const TOPPINGS = [
+            { id: 'sprinkles', name: 'Urai Warna-warni', emoji: '✨' },
+            { id: 'strawberry', name: 'Buah Strowberi', emoji: '🍓' },
+            { id: 'chocchip', name: 'Cip Coklat', emoji: '🍫' },
+            { id: 'cherry', name: 'Buah Ceri', emoji: '🍒' },
+            { id: 'candle', name: 'Lilin Lahir', emoji: '🕯️' },
+            { id: 'cream', name: 'Krim Putih', emoji: '🧁' },
+            { id: 'flower', name: 'Bunga Gula', emoji: '🌸' },
+            { id: 'cookie', name: 'Biskut Comel', emoji: '🍪' }
+        ];
+
+        const CUSTOMERS = [
+            { name: 'Kucing Comel', avatar: '🐱', quote: 'Saya teringin kek strowberi yang manis!' },
+            { name: 'Panda Comel', avatar: '🐼', quote: 'Boleh buatkan saya kek matcha hijau?' },
+            { name: 'Arnab Merah', avatar: '🐰', quote: 'Saya mahukan kek coklat dengan ceri di atas!' },
+            { name: 'Beruang Manis', avatar: '🐻', quote: 'Tolong buatkan kek vanila berwarna-warni!' }
+        ];
+
+        /* ==========================================
+           2. AUDIO SYSTEM (WEB AUDIO API)
+           ========================================== */
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'pop') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.12);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+                osc.start(now);
+                osc.stop(now + 0.12);
+            } else if (type === 'chime') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+                osc.start(now);
+                osc.stop(now + 0.6);
+            } else if (type === 'burn') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(60, now + 0.4);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('soundIcon');
+            if (soundEnabled) {
+                icon.className = 'fa-solid fa-volume-high text-lg';
+            } else {
+                icon.className = 'fa-solid fa-volume-xmark text-lg text-red-400';
+            }
+        }
+
+        /* ==========================================
+           3. GAME STATE MANAGEMENT
+           ========================================== */
+        let gameState = {
+            coins: 100,
+            mode: 'free', // 'shop' or 'free'
+            currentStep: 1,
+            selectedCake: CAKE_TYPES[0],
+            addedIngredients: [],
+            mixProgress: 0,
+            bakingState: 'raw', // 'raw', 'baking', 'perfect', 'burnt'
+            bakingProgress: 0,
+            bakeInterval: null,
+            selectedFrosting: FROSTINGS[0],
+            placedToppings: [],
+            selectedToppingTool: null,
+            pipingText: '',
+            pipingColor: '#5D4037',
+            customerOrder: null,
+            orderTimer: null,
+            orderTimeLeft: 100
+        };
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            renderCakeSelection();
+            renderIngredientsList();
+            renderFrostingOptions();
+            renderToppingsOptions();
+            loadGallery();
+        });
+
+        function goHome() {
+            playSound('click');
+            clearInterval(gameState.bakeInterval);
+            clearInterval(gameState.orderTimer);
+            showScreen('menuScreen');
+        }
+
+        function showScreen(screenId) {
+            ['menuScreen', 'gameScreen', 'resultScreen'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+            if(screenId === 'gameScreen') {
+                document.getElementById('gameScreen').classList.add('flex');
+            }
+        }
+
+        function startGame(mode) {
+            playSound('click');
+            gameState.mode = mode;
+            gameState.currentStep = 1;
+            gameState.addedIngredients = [];
+            gameState.mixProgress = 0;
+            gameState.bakingState = 'raw';
+            gameState.bakingProgress = 0;
+            gameState.placedToppings = [];
+            gameState.pipingText = '';
+
+            document.getElementById('customerOrderBar').style.display = (mode === 'shop') ? 'flex' : 'none';
+
+            if (mode === 'shop') {
+                generateCustomerOrder();
+            }
+
+            goToStep(1);
+            showScreen('gameScreen');
+        }
+
+        function generateCustomerOrder() {
+            const customer = CUSTOMERS[Math.floor(Math.random() * CUSTOMERS.length)];
+            const cake = CAKE_TYPES[Math.floor(Math.random() * CAKE_TYPES.length)];
+            const frosting = FROSTINGS[Math.floor(Math.random() * FROSTINGS.length)];
+
+            gameState.customerOrder = {
+                customer: customer,
+                cake: cake,
+                frosting: frosting
+            };
+
+            document.getElementById('customerAvatar').innerText = customer.avatar;
+            document.getElementById('customerName').innerText = customer.name;
+            document.getElementById('orderDialogue').innerText = `"${customer.quote}"`;
+
+            document.getElementById('orderSpecs').innerHTML = `
+                <span class="bg-amber-100 text-amber-900 text-xs px-2 py-0.5 rounded-md border border-amber-300 font-bold">${cake.name}</span>
+                <span class="bg-pink-100 text-pink-900 text-xs px-2 py-0.5 rounded-md border border-pink-300 font-bold">${frosting.name}</span>
+            `;
+
+            // Start Customer Patience Timer
+            gameState.orderTimeLeft = 100;
+            clearInterval(gameState.orderTimer);
+            gameState.orderTimer = setInterval(() => {
+                gameState.orderTimeLeft -= 1;
+                document.getElementById('customerTimer').style.width = gameState.orderTimeLeft + '%';
+                if (gameState.orderTimeLeft <= 0) {
+                    clearInterval(gameState.orderTimer);
+                    alert("Pelanggan telah beredar kerana menunggu terlalu lama!");
+                    goHome();
+                }
+            }, 600);
+        }
+
+        /* ==========================================
+           4. STEP 1: CAKE SELECTION LOGIC
+           ========================================== */
+        function renderCakeSelection() {
+            const grid = document.getElementById('cakeOptionsGrid');
+            grid.innerHTML = '';
+
+            CAKE_TYPES.forEach(cake => {
+                const card = document.createElement('button');
+                card.className = `bg-amber-50 hover:bg-amber-100 border-4 border-amber-200 hover:border-amber-400 rounded-2xl p-4 flex flex-col items-center gap-2 transition transform hover:-translate-y-1 text-center shadow-sm relative`;
+                card.onclick = () => selectCake(cake);
+
+                card.innerHTML = `
+                    <div class="text-4xl my-1">${cake.icon}</div>
+                    <div class="font-bold text-sm text-amber-950 leading-tight">${cake.name}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function selectCake(cake) {
+            playSound('click');
+            gameState.selectedCake = cake;
+            goToStep(2);
+        }
+
+        /* ==========================================
+           5. STEP 2: INGREDIENTS & MIXING LOGIC
+           ========================================== */
+        function renderIngredientsList() {
+            const container = document.getElementById('ingredientsContainer');
+            container.innerHTML = '';
+
+            INGREDIENTS.forEach(ing => {
+                const item = document.createElement('div');
+                item.id = `ing-${ing.id}`;
+                item.draggable = true;
+                item.ondragstart = (e) => dragIngredient(e, ing.id);
+                item.onclick = () => addIngredientToBowl(ing.id);
+                item.className = `bg-white p-2 rounded-xl border-2 border-amber-200 flex flex-col items-center justify-center cursor-pointer hover:bg-amber-100 transition shadow-sm text-center select-none active:scale-95`;
+                
+                item.innerHTML = `
+                    <span class="text-2xl">${ing.icon}</span>
+                    <span class="text-[11px] font-bold text-amber-900 mt-1 leading-tight">${ing.name}</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function dragIngredient(e, id) {
+            e.dataTransfer.setData('text/plain', id);
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+            document.getElementById('mixingBowl').classList.add('drag-over');
+        }
+
+        function dragLeave(e) {
+            document.getElementById('mixingBowl').classList.remove('drag-over');
+        }
+
+        function dropIngredient(e) {
+            e.preventDefault();
+            document.getElementById('mixingBowl').classList.remove('drag-over');
+            const id = e.dataTransfer.getData('text/plain');
+            addIngredientToBowl(id);
+        }
+
+        function addIngredientToBowl(id) {
+            if (gameState.addedIngredients.includes(id)) return;
+
+            playSound('pop');
+            gameState.addedIngredients.push(id);
+            
+            // Highlight item as added
+            const el = document.getElementById(`ing-${id}`);
+            if(el) {
+                el.classList.add('opacity-40', 'pointer-events-none', 'bg-green-50', 'border-green-300');
+            }
+
+            // Update Batter visual inside bowl
+            const bowlBatter = document.getElementById('bowlBatter');
+            const fillHeight = (gameState.addedIngredients.length / INGREDIENTS.length) * 100;
+            bowlBatter.style.height = `${fillHeight}%`;
+            bowlBatter.style.backgroundColor = gameState.selectedCake.color;
+
+            document.getElementById('bowlInstruction').innerText = `${gameState.addedIngredients.length}/${INGREDIENTS.length} Bahan Dimasukkan`;
+
+            // Enable Whisk if all ingredients added
+            if (gameState.addedIngredients.length === INGREDIENTS.length) {
+                document.getElementById('whiskTool').classList.remove('hidden');
+                document.getElementById('whiskBtn').disabled = false;
+                document.getElementById('bowlInstruction').innerText = 'Tekan "Kacau" untuk mengadun!';
+            }
+        }
+
+        function whiskStep() {
+            if (gameState.addedIngredients.length < INGREDIENTS.length) return;
+
+            playSound('pop');
+            gameState.mixProgress += 20;
+            if (gameState.mixProgress > 100) gameState.mixProgress = 100;
+
+            document.getElementById('mixProgressBar').style.width = gameState.mixProgress + '%';
+            document.getElementById('mixPercent').innerText = gameState.mixProgress + '%';
+
+            // Whisk Rotation effect
+            const whisk = document.getElementById('whiskTool');
+            whisk.style.transform = `rotate(${gameState.mixProgress * 3.6}deg) scale(1.1)`;
+
+            if (gameState.mixProgress >= 100) {
+                playSound('chime');
+                setTimeout(() => {
+                    goToStep(3);
+                }, 600);
+            }
+        }
+
+        /* ==========================================
+           6. STEP 3: OVEN BAKING LOGIC
+           ========================================== */
+        function toggleOven() {
+            const btn = document.getElementById('ovenStartBtn');
+            const display = document.getElementById('ovenTimerDisplay');
+            const cakeVisual = document.getElementById('bakingCake');
+            const ovenGlow = document.getElementById('ovenGlow');
+            const ovenSteam = document.getElementById('ovenSteam');
+
+            if (gameState.bakingState === 'raw') {
+                // Start Baking
+                playSound('click');
+                gameState.bakingState = 'baking';
+                btn.innerHTML = `<i class="fa-solid fa-hand mr-1"></i> Angkat Kek!`;
+                btn.className = "bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-5 rounded-xl border-b-4 border-red-700 transition shadow animate-pulse";
+                ovenGlow.style.opacity = '1';
+                ovenSteam.style.opacity = '1';
+
+                gameState.bakingProgress = 0;
+                gameState.bakeInterval = setInterval(() => {
+                    gameState.bakingProgress += 5;
+                    
+                    // Update Visual Color transition during baking
+                    if (gameState.bakingProgress < 60) {
+                        cakeVisual.style.backgroundColor = gameState.selectedCake.spongeColor;
+                        cakeVisual.style.transform = `scale(${0.75 + (gameState.bakingProgress / 200)})`;
+                        display.innerText = `Membakar... ${gameState.bakingProgress}%`;
+                        display.className = "text-xl font-bold text-amber-400 font-mono";
+                    } else if (gameState.bakingProgress >= 60 && gameState.bakingProgress <= 90) {
+                        // Perfect Baking Window
+                        cakeVisual.style.backgroundColor = '#D7CCC8'; // Golden brown tint
+                        display.innerText = `MASAK SEMPURNA! (${gameState.bakingProgress}%)`;
+                        display.className = "text-xl font-bold text-emerald-400 font-mono animate-bounce-subtle";
+                        document.getElementById('cakeStatusEmoji').innerText = '✨';
+                    } else {
+                        // Overbaked / Burnt
+                        cakeVisual.style.backgroundColor = '#3E2723'; // Burnt dark
+                        display.innerText = `HANGUS! (${gameState.bakingProgress}%)`;
+                        display.className = "text-xl font-bold text-red-500 font-mono";
+                        document.getElementById('cakeStatusEmoji').innerText = '🔥';
+                    }
+
+                    if (gameState.bakingProgress >= 100) {
+                        clearInterval(gameState.bakeInterval);
+                        playSound('burn');
+                        gameState.bakingState = 'burnt';
+                        alert("Alamak! Kek anda dah hangus! Mari cuba bakar semula.");
+                        resetOven();
+                    }
+                }, 300);
+
+            } else if (gameState.bakingState === 'baking') {
+                // Stop / Take Out Cake
+                clearInterval(gameState.bakeInterval);
+                ovenGlow.style.opacity = '0';
+                ovenSteam.style.opacity = '0';
+
+                if (gameState.bakingProgress >= 50 && gameState.bakingProgress <= 90) {
+                    playSound('chime');
+                    gameState.bakingState = 'perfect';
+                    setTimeout(() => {
+                        goToStep(4);
+                    }, 500);
+                } else {
+                    playSound('burn');
+                    alert("Kek belum cukup masak atau dah terlampau garing! Sila cuba lagi.");
+                    resetOven();
+                }
+            }
+        }
+
+        function resetOven() {
+            clearInterval(gameState.bakeInterval);
+            gameState.bakingState = 'raw';
+            gameState.bakingProgress = 0;
+            document.getElementById('ovenStartBtn').innerHTML = `<i class="fa-solid fa-fire mr-1"></i> Mula Bakar`;
+            document.getElementById('ovenStartBtn').className = "bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2.5 px-5 rounded-xl border-b-4 border-amber-700 transition shadow";
+            document.getElementById('ovenTimerDisplay').innerText = "00:00 - Sedia";
+            document.getElementById('ovenTimerDisplay').className = "text-xl font-bold text-amber-400 font-mono";
+            document.getElementById('bakingCake').style.transform = "scale(0.75)";
+            document.getElementById('cakeStatusEmoji').innerText = '✨';
+            document.getElementById('ovenGlow').style.opacity = '0';
+            document.getElementById('ovenSteam').style.opacity = '0';
+        }
+
+        /* ==========================================
+           7. STEP 4: DECORATION & PIPING LOGIC
+           ========================================== */
+        function switchDecoTab(tab) {
+            playSound('click');
+            ['Frosting', 'Toppings', 'Piping'].forEach(t => {
+                const btn = document.getElementById(`tab${t}`);
+                const sec = document.getElementById(`deco${t}Section`);
+                if (t.toLowerCase() === tab) {
+                    btn.className = "deco-tab active font-bold text-xs py-2 px-3 rounded-t-lg bg-pink-400 text-white";
+                    sec.classList.remove('hidden');
+                } else {
+                    btn.className = "deco-tab font-bold text-xs py-2 px-3 rounded-t-lg bg-pink-100 text-pink-800";
+                    sec.classList.add('hidden');
+                }
+            });
+        }
+
+        function renderFrostingOptions() {
+            const container = document.getElementById('frostingOptions');
+            container.innerHTML = '';
+
+            FROSTINGS.forEach(f => {
+                const btn = document.createElement('button');
+                btn.className = "p-2 rounded-xl border-2 border-pink-200 flex flex-col items-center gap-1 hover:border-pink-400 transition bg-white shadow-sm";
+                btn.onclick = () => selectFrosting(f);
+                btn.innerHTML = `
+                    <div class="w-8 h-8 rounded-full border border-gray-300 shadow-inner" style="background-color: ${f.color}"></div>
+                    <span class="text-[10px] font-bold text-pink-900">${f.name}</span>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        function selectFrosting(frosting) {
+            playSound('pop');
+            gameState.selectedFrosting = frosting;
+            document.getElementById('renderFrosting').style.backgroundColor = frosting.color;
+        }
+
+        function renderToppingsOptions() {
+            const container = document.getElementById('toppingsOptions');
+            container.innerHTML = '';
+
+            TOPPINGS.forEach(top => {
+                const btn = document.createElement('button');
+                btn.className = "p-2 rounded-xl border-2 border-pink-200 flex flex-col items-center gap-1 hover:border-pink-400 transition bg-white shadow-sm active:scale-95";
+                btn.onclick = () => {
+                    playSound('pop');
+                    gameState.selectedToppingTool = top;
+                    alert(`Tekan di atas kawasan kek untuk meletakkan ${top.name}!`);
+                };
+                btn.innerHTML = `
+                    <span class="text-2xl">${top.emoji}</span>
+                    <span class="text-[10px] font-bold text-pink-900 leading-tight">${top.name}</span>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        function handleStageClick(e) {
+            if (!gameState.selectedToppingTool) return;
+
+            const frostingElem = document.getElementById('renderFrosting');
+            const rect = frostingElem.getBoundingClientRect();
+            
+            // Check if click is near frosting area
+            if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                playSound('pop');
+                const relX = e.clientX - rect.left;
+                const relY = e.clientY - rect.top;
+
+                const toppingData = {
+                    emoji: gameState.selectedToppingTool.emoji,
+                    x: relX,
+                    y: relY
+                };
+
+                gameState.placedToppings.push(toppingData);
+                renderPlacedToppings();
+            }
+        }
+
+        function renderPlacedToppings() {
+            const holder = document.getElementById('renderToppingsHolder');
+            holder.innerHTML = '';
+
+            gameState.placedToppings.forEach((top, index) => {
+                const elem = document.createElement('span');
+                elem.className = "absolute text-xl transform -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer hover:scale-125 transition";
+                elem.style.left = `${top.x}px`;
+                elem.style.top = `${top.y}px`;
+                elem.innerText = top.emoji;
+                elem.title = "Tekan untuk padam";
+                elem.onclick = (evt) => {
+                    evt.stopPropagation();
+                    gameState.placedToppings.splice(index, 1);
+                    renderPlacedToppings();
+                };
+                holder.appendChild(elem);
+            });
+        }
+
+        function applyPipingText() {
+            playSound('pop');
+            const text = document.getElementById('pipingTextInput').value;
+            const color = document.getElementById('pipingColorInput').value;
+
+            gameState.pipingText = text;
+            gameState.pipingColor = color;
+
+            const renderText = document.getElementById('renderPipingText');
+            renderText.innerText = text;
+            renderText.style.color = color;
+        }
+
+        function resetDecorations() {
+            playSound('click');
+            gameState.placedToppings = [];
+            gameState.pipingText = '';
+            document.getElementById('pipingTextInput').value = '';
+            document.getElementById('renderPipingText').innerText = '';
+            renderPlacedToppings();
+        }
+
+        /* ==========================================
+           8. STEP NAVIGATION & WORKFLOW
+           ========================================== */
+        function goToStep(step) {
+            gameState.currentStep = step;
+
+            // Hide all step contents
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`step${i}Content`).classList.add('hidden');
+                
+                // Indicators update
+                const ind = document.getElementById(`stepInd${i}`);
+                if (i <= step) {
+                    ind.classList.remove('opacity-50');
+                    ind.querySelector('div').className = "w-9 h-9 rounded-full bg-bakery-pink text-white font-bold flex items-center justify-center shadow-md text-sm border-2 border-white";
+                } else {
+                    ind.classList.add('opacity-50');
+                    ind.querySelector('div').className = "w-9 h-9 rounded-full bg-gray-300 text-gray-600 font-bold flex items-center justify-center shadow-md text-sm border-2 border-white";
+                }
+            }
+
+            document.getElementById(`step${step}Content`).classList.remove('hidden');
+
+            // Setup Step 4 Canvas defaults
+            if (step === 4) {
+                document.getElementById('renderSponge').style.backgroundColor = gameState.selectedCake.spongeColor;
+                document.getElementById('renderFrosting').style.backgroundColor = gameState.selectedFrosting.color;
+            }
+        }
+
+        function finishCake() {
+            playSound('chime');
+            clearInterval(gameState.orderTimer);
+
+            // Trigger Confetti
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            // Calculate score/reward
+            let earnedCoins = 50;
+            if (gameState.mode === 'shop') {
+                earnedCoins = 80;
+                // Add extra bonus if matches customer preference
+                if (gameState.customerOrder && gameState.selectedCake.id === gameState.customerOrder.cake.id) {
+                    earnedCoins += 40;
+                }
+            }
+
+            gameState.coins += earnedCoins;
+            document.getElementById('coinCount').innerText = gameState.coins;
+            document.getElementById('earnedCoins').innerText = `+${earnedCoins} 🪙`;
+
+            // Display clone in result preview
+            const previewBox = document.getElementById('resultCakePreview');
+            previewBox.innerHTML = '';
+            const cakeClone = document.getElementById('cakeBaseRender').cloneNode(true);
+            previewBox.appendChild(cakeClone);
+
+            showScreen('resultScreen');
+        }
+
+        function nextCustomerOrFinish() {
+            playSound('click');
+            if (gameState.mode === 'shop') {
+                startGame('shop');
+            } else {
+                goHome();
+            }
+        }
+
+        /* ==========================================
+           9. LOCAL STORAGE GALLERY LOGIC
+           ========================================== */
+        function saveToGallery() {
+            playSound('chime');
+            const gallery = JSON.parse(localStorage.getItem('my_baked_cakes') || '[]');
+            
+            const cakeRecord = {
+                id: Date.now(),
+                date: new Date().toLocaleDateString('ms-MY'),
+                cakeName: gameState.selectedCake.name,
+                frostingColor: gameState.selectedFrosting.color,
+                spongeColor: gameState.selectedCake.spongeColor,
+                toppingsCount: gameState.placedToppings.length,
+                pipingText: gameState.pipingText
+            };
+
+            gallery.unshift(cakeRecord);
+            localStorage.setItem('my_baked_cakes', JSON.stringify(gallery));
+            alert("Kek berjaya disimpan ke dalam Galeri!");
+        }
+
+        function loadGallery() {
+            const container = document.getElementById('galleryGrid');
+            const gallery = JSON.parse(localStorage.getItem('my_baked_cakes') || '[]');
+
+            if (gallery.length === 0) {
+                container.innerHTML = `<p class="col-span-2 text-center text-gray-400 py-8 text-xs">Belum ada kek disimpan dalam galeri. Mari bakar kek pertama anda!</p>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            gallery.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-amber-50 p-4 rounded-2xl border-2 border-amber-200 flex flex-col items-center justify-between shadow-sm relative";
+                
+                card.innerHTML = `
+                    <div class="text-[10px] text-gray-400 absolute top-2 right-2">${item.date}</div>
+                    <div class="w-28 h-20 relative flex flex-col items-center justify-center my-3">
+                        <div class="w-24 h-10 rounded-t-xl border-b-2 border-amber-300" style="background-color: ${item.frostingColor}"></div>
+                        <div class="w-24 h-8 rounded-b-lg" style="background-color: ${item.spongeColor}"></div>
+                    </div>
+                    <h4 class="font-bold text-xs text-amber-900">${item.cakeName}</h4>
+                    <p class="text-[10px] text-pink-600 font-bold mt-1">${item.pipingText ? `"${item.pipingText}"` : 'Kek Comel'}</p>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function openGallery() {
+            playSound('click');
+            loadGallery();
+            document.getElementById('galleryModal').classList.remove('hidden');
+        }
+
+        function closeGallery() {
+            playSound('click');
+            document.getElementById('galleryModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
